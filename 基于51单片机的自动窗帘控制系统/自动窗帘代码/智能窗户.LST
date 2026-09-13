@@ -1,0 +1,329 @@
+C51 COMPILER V9.01   _ÇÄ_´_»§                                                              04/06/2026 14:55:46 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE _ÇÄ_´_»§
+OBJECT MODULE PLACED IN ÖÇÄÜ´°»§.OBJ
+COMPILER INVOKED BY: D:\keil5\C51\BIN\C51.EXE ÖÇÄÜ´°»§.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          /*************************************************
+   2          ¸ü¶à51µ¥Æ¬»ú×ÊÁÏÇë¹Ø×¢Î¢ÐÅ¹«ÖÚºÅ£ºµç×ÓÓ¦ÓÃÑ§Ï°¹Ý
+   3          **************************************************
+   4          *****************¡¶µç×ÓÓ¦ÓÃÑ§Ï°¹Ý¡·***************
+   5          ***************************************************/
+   6          
+   7          #include <reg52.h>
+   8               
+   9          #define uchar unsigned char 
+  10          #define uint  unsigned int   
+  11          
+  12          bit flag_200ms ;
+  13          sbit beep = P1^7;     //·äÃùÆ÷IO¿Ú¶¨Òå
+  14          sbit LED=P2^7;        //µÆ¹âÄ£¿é
+  15          bit flag_relay_en;   
+  16          uchar flag_kaig_moshi=0;//¿ª¹ØÄ£Ê½
+  17          bit flag_zd_sd;     //×Ô¶¯ ÊÖ¶¯ Ä£Ê½
+  18          
+  19          bit flag_lj_en;    //°´¼üÁ¬¼ÓÊ¹ÄÜ
+  20          bit flag_lj_3_en;  //°´¼üÁ¬3´ÎÁ¬¼ÓºóÊ¹ÄÜ ¼ÓµÄÊý¾ÍÔ½´óÁË 
+  21          uchar key_time,flag_value;      //ÓÃ×öÁ¬¼ÓµÄÖÐ¼ä±äÁ¿
+  22          bit key_500ms  ;
+  23          uchar menu_shudu = 20;  //ÓÃÀ´¿ØÖÆÁ¬¼ÓµÄËÙ¶È
+  24          uchar value,i;
+  25          
+  26          uchar k_shi=1,k_fen=2;  //¿ª´°Á±Ê±¼ä
+  27          uchar g_shi=3,g_fen=4;      //¹Ø´°Á±Ê±¼ä
+  28           
+  29          uint t_high;                  //¸ßÎÂ±¨¾¯Öµ
+  30          
+  31          sbit DO=P3^7;   //DO¶¨ÒåÎªP1¿ÚµÄµÚ4Î»½Å£¬Á¬½ÓADC0832DO½Å
+  32          sbit SCL=P3^6;    //SCL¶¨ÒåÎªP1¿ÚµÄµÚ3Î»½Å£¬Á¬½ÓADC0832SCL½Å
+  33          sbit CS=P3^5;   //CS¶¨ÒåÎªP1¿ÚµÄµÚ4Î»½Å£¬Á¬½ÓADC0832CS½Å
+  34          uchar guanxian,guanxian_set = 4;     //¹âÏß
+  35          void write_eepom();
+  36          
+  37          
+  38          #include "eepom52.h"
+  39          #include "key.h"
+  40          #include "ds1302.h"
+  41          #include "lcd1602.h"
+  42          #include "18b20_2lu.h"
+  43          #include "bujindianji.h"
+  44          
+  45          sbit key_jia = P3^1;   //¼Ó
+  46          sbit key_jie = P3^2;   //¼õ
+  47          
+  48          
+  49          /*************Ð´µ¥Æ¬»úÄÚ²¿EEPOM*************/
+  50          void write_eepom()
+  51          { 
+  52   1        SectorErase(0x2000);
+  53   1        byte_write(0x2000,flag_zd_sd);
+  54   1        byte_write(0x2001,k_shi%256);
+  55   1        byte_write(0x2002,k_fen%256);
+C51 COMPILER V9.01   _ÇÄ_´_»§                                                              04/06/2026 14:55:46 PAGE 2   
+
+  56   1        byte_write(0x2003,g_shi%256);
+  57   1        byte_write(0x2004,g_fen%256);
+  58   1        byte_write(0x2005,t_high%256);
+  59   1        byte_write(0x2009,guanxian_set%256);  
+  60   1        byte_write(0x2010,bjdj_value%256);  
+  61   1        byte_write(0x2050,a_a); 
+  62   1      }
+  63          
+  64          /*************¶Áµ¥Æ¬»úÄÚ²¿EEPOM*************/
+  65          void read_eepom()
+  66          {
+  67   1        flag_zd_sd = byte_read(0x2000); 
+  68   1        k_shi  = byte_read(0x2001); 
+  69   1        k_fen  = byte_read(0x2002); 
+  70   1        g_shi  = byte_read(0x2003); 
+  71   1        g_fen  = byte_read(0x2004); 
+  72   1        t_high  = byte_read(0x2005);  
+  73   1        guanxian_set  = byte_read(0x2009);  
+  74   1        bjdj_value  = byte_read(0x2010);  
+  75   1        a_a = byte_read(0x2050);
+  76   1      } 
+  77          
+  78          /*************³õÊ¼»¯EEPROM************/
+  79          void init_eepom() //³õÊ¼»¯EEPROM
+  80          {
+  81   1         read_eepom();
+  82   1        if(a_a == 0xff) 
+  83   1        {
+  84   2          flag_zd_sd = 1;     //Ä£Ê½ÉèÖÃ
+  85   2          a_a=1;
+  86   2          k_shi=8;
+  87   2          k_fen=2;      //¿ª
+  88   2          g_shi=3;
+  89   2          g_fen=4;      //¹Ø
+  90   2          t_high=35;  
+  91   2          guanxian_set=4;
+  92   2          bjdj_value=0;
+  93   2          write_eepom();    
+  94   2        }
+  95   1        
+  96   1      }
+  97          #include "menu.h"
+  98          
+  99          /***************¶ÁÊýÄ£×ª»»Êý¾Ý****************/ 
+ 100          //ÇëÏÈÁË½âADC0832Ä£Êý×ª»»µÄ´®ÐÐÐ­Òé£¬ÔÙÀ´¶Á±¾º¯Êý£¬Ö÷ÒªÊÇ¶ÔÓ¦Ê±ÐòÍ¼À´Àí½â£¬±¾º¯ÊýÊÇÄ£Äâ0832µÄ´®ÐÐÐ­Òé½øÐÐµ
+             -Ä
+ 101                      //  1  0  0 Í¨µÀ
+ 102                      //  1  1  1 Í¨µÀ 
+ 103          unsigned char ad0832read(bit SGL,bit ODD)
+ 104          {
+ 105   1        unsigned char i=0,value=0,value1=0;   
+ 106   1          SCL=0;
+ 107   1          DO=1;
+ 108   1          CS=0;   //¿ªÊ¼
+ 109   1          SCL=1;    //µÚÒ»¸öÉÏÉýÑØ  
+ 110   1          SCL=0;
+ 111   1          DO=SGL;
+ 112   1          SCL=1;    //µÚ¶þ¸öÉÏÉýÑØ
+ 113   1          SCL=0;
+ 114   1          DO=ODD;
+ 115   1          SCL=1;      //µÚÈý¸öÉÏÉýÑØ
+ 116   1          SCL=0;      //µÚÈý¸öÏÂ½µÑØ
+C51 COMPILER V9.01   _ÇÄ_´_»§                                                              04/06/2026 14:55:46 PAGE 3   
+
+ 117   1          DO=1;
+ 118   1          for(i=0;i<8;i++)
+ 119   1          {
+ 120   2            SCL=1;
+ 121   2            SCL=0; //¿ªÊ¼´ÓµÚËÄ¸öÏÂ½µÑØ½ÓÊÕÊý¾Ý
+ 122   2            value<<=1;
+ 123   2            if(DO)
+ 124   2              value++;            
+ 125   2          }
+ 126   1          for(i=0;i<8;i++)
+ 127   1          {     //½ÓÊÕÐ£ÑéÊý¾Ý
+ 128   2            value1>>=1;
+ 129   2            if(DO)
+ 130   2              value1+=0x80;
+ 131   2            SCL=1;
+ 132   2            SCL=0;
+ 133   2          }
+ 134   1          CS=1;
+ 135   1          SCL=1;  
+ 136   1          if(value==value1)   //ÓëÐ£ÑéÊý¾Ý±È½Ï£¬ÕýÈ·¾Í·µ»ØÊý¾Ý£¬·ñÔò·µ»Ø0 
+ 137   1            return value;
+ 138   1        return 0;
+ 139   1      }
+ 140          
+ 141          
+ 142          
+ 143          /******************1ms ÑÓÊ±º¯Êý*******************/
+ 144          void delay_1ms(uint q)
+ 145          {
+ 146   1        uint i,j;
+ 147   1        for(i=0;i<q;i++)
+ 148   1          for(j=0;j<120;j++);
+ 149   1      }
+ 150          
+ 151          /*************¶¨Ê±Æ÷0³õÊ¼»¯³ÌÐò***************/
+ 152          void init_1602_ds1302()
+ 153          {
+ 154   1        write_sfm2_ds1302(2,4,nian);  
+ 155   1        write_sfm2_ds1302(2,7,yue); 
+ 156   1        write_sfm2_ds1302(2,10,ri); 
+ 157   1        write_sfm2_ds1302(1,4,shi); 
+ 158   1        write_sfm2_ds1302(1,7,fen); 
+ 159   1        write_sfm2_ds1302(1,10,miao);
+ 160   1        write_sfm1(1,14,week);    
+ 161   1      }                    
+ 162          
+ 163          /*************¶¨Ê±Æ÷0³õÊ¼»¯³ÌÐò***************/
+ 164          void init_time0()   
+ 165          {
+ 166   1        EA   = 1;     //¿ª×ÜÖÐ¶Ï
+ 167   1        TMOD = 0X01;    //¶¨Ê±Æ÷0¡¢¹¤×÷·½Ê½1
+ 168   1        ET0  = 1;     //¿ª¶¨Ê±Æ÷0ÖÐ¶Ï 
+ 169   1        TR0  = 1;     //ÔÊÐí¶¨Ê±Æ÷0¶¨Ê±
+ 170   1      }
+ 171          
+ 172          /*************ÊÖ¶¯¿ª¹Ø´°Á±***************/
+ 173          void shoudong_kaiguan()   //ÊÖ¶¯¿ª¹Ø´°Á±
+ 174          {
+ 175   1        if(flag_zd_sd == 0)   //ÊÖ¶¯Ä£Ê½
+ 176   1        {
+ 177   2          if(menu_1 == 0)
+ 178   2          {
+C51 COMPILER V9.01   _ÇÄ_´_»§                                                              04/06/2026 14:55:46 PAGE 4   
+
+ 179   3            if(flag_kaig_moshi == 0)
+ 180   3            {
+ 181   4              if(key_can == 2)
+ 182   4                flag_z_f = 1;     //ÊÖ¶¯¿ª´°
+ 183   4              if(key_can == 3)
+ 184   4                flag_z_f = 2;     //ÊÖ¶¯¹Ø´°
+ 185   4              if(flag_lj_en == 0)
+ 186   4                flag_z_f = 0;
+ 187   4            }
+ 188   3          }
+ 189   2        }
+ 190   1      }
+ 191          
+ 192                                        
+ 193          /*********************ÖÇÄÜ´°Á±´¦Àíº¯Êý***********************/
+ 194          void zinengchuanglian_dis()   //ÖÇÄÜ´°Á±´¦Àíº¯Êý
+ 195          {
+ 196   1        if(flag_zd_sd == 1)
+ 197   1        { if((miao == 0) && (fen == k_fen) && (shi == k_shi))   //¶¨Ê±¿ª´°
+ 198   2          {
+ 199   3          flag_z_f = 2;    //¹Ø´° 
+ 200   3          
+ 201   3            flag_kaig_moshi = 1;
+ 202   3          }
+ 203   2          if((miao == 0) && (fen == g_fen) && (shi == g_shi))   //¶¨Ê±¹Ø´°
+ 204   2          {
+ 205   3          flag_z_f = 1;     //¿ª´°   
+ 206   3          flag_kaig_moshi = 2;
+ 207   3          }
+ 208   2          if(flag_kaig_moshi == 0)//°×ÌìÍíÉÏÊÊÓÃ£¬ÖÐÎç²»»áÒÀ¾Ý¹âÇ¿×Ô¶¯¹Ø
+ 209   2          {
+ 210   3            if(guanxian <= guanxian_set)
+ 211   3              flag_z_f = 1;     //ÊÖ¶¯¿ª´°
+ 212   3              
+ 213   3            else 
+ 214   3              flag_z_f = 2; 
+ 215   3          }                     //ÊÖ¶¯¹Ø´°
+ 216   2        } 
+ 217   1      }
+ 218          
+ 219          
+ 220          void main()
+ 221          { 
+ 222   1        init_eepom();    //³õÊ¼»¯EEPROM
+ 223   1        init_1602();     //lcd1602³õÊ¼»¯
+ 224   1        init_1602_dis_csf(); //lcd1602³õÊ¼»¯ÏÔÊ¾
+ 225   1        init_ds1302_io();  //³õÊ¼»¯ds1302Io
+ 226   1        init_time0();    //³õÊ¼»¯¶¨Ê±Æ÷
+ 227   1        menu_1_break();      //²Ëµ¥³õÊ¼½çÃæ
+ 228   1        init_ds1302();     //ds1302³õÊ¼»¯
+ 229   1        temperature1 = read1_temp();  //¶ÁÎÂ¶È1
+ 230   1        delay_1ms(650);
+ 231   1        while(1)
+ 232   1        {
+ 233   2          key();       //°´¼ü³ÌÐò
+ 234   2          if(key_can < 10)
+ 235   2          {
+ 236   3            key_with(); 
+ 237   3          }
+ 238   2           if(guanxian <= guanxian_set)
+ 239   2            LED=1;
+ 240   2           else
+C51 COMPILER V9.01   _ÇÄ_´_»§                                                              04/06/2026 14:55:46 PAGE 5   
+
+ 241   2              LED=0;
+ 242   2                 
+ 243   2          shoudong_kaiguan();   //ÊÖ¶¯¿ª¹Ø´°Á±
+ 244   2          if(flag_200ms == 1)
+ 245   2          {   
+ 246   3            flag_200ms = 0;
+ 247   3            zinengchuanglian_dis();   //ÖÇÄÜ´°Á±´¦Àíº¯Êý
+ 248   3            temperature1 = read1_temp();  //¶ÁÎÂ¶È1 »·¾³ÎÂ¶È
+ 249   3            if(temperature1 >= 99)
+ 250   3              temperature1 = 99;
+ 251   3            if(temperature1 >= t_high)
+ 252   3                 beep = ~beep;        //ÎÂ¶È±¨¾¯ £¬·äÃùÆ÷±¨¾¯
+ 253   3              else 
+ 254   3                 beep = 1;
+ 255   3            guanxian = ad0832read(1,0) * 9.0 / 255;
+ 256   3            if((menu_1 == 0))
+ 257   3            {
+ 258   4              read_time();      //¶ÁÊ±¼ä
+ 259   4              init_1602_ds1302();   //ÏÔÊ¾Ê±ÖÓ
+ 260   4              write_sfm_18b20(2,13,temperature1); //ÏÔÊ¾ÎÂ¶È
+ 261   4              write_sfm1(2,0,guanxian); //ÏÔÊ¾ÎÂ¶È
+ 262   4            }
+ 263   3          }
+ 264   2          bujindj();   //²½½øµç»úº¯Êý
+ 265   2        }
+ 266   1      }
+ 267          
+ 268          void time0() interrupt 1
+ 269          {      
+ 270   1        static uchar value;
+ 271   1        TH0 = 0X3C;
+ 272   1        TL0 = 0XB0;    //50ms
+ 273   1        value ++;
+ 274   1        if(value >= 4)       //200ms
+ 275   1        {
+ 276   2          value = 0;
+ 277   2          flag_200ms = 1;
+ 278   2        }
+ 279   1        if(flag_lj_en == 1)    //°´ÏÂ°´¼üÊ¹ÄÜ
+ 280   1        {
+ 281   2          key_time ++;
+ 282   2          if(key_time >= menu_shudu) //500ms
+ 283   2          {
+ 284   3            key_time = 0;
+ 285   3            key_500ms = 1; //500ms
+ 286   3            flag_value ++;
+ 287   3            if(flag_value > 3)
+ 288   3            {
+ 289   4              flag_value = 10;
+ 290   4              flag_lj_3_en = 1; //3´Îºó1.5ÃëºóÁ¬¼Ó´óÐ©
+ 291   4            }           
+ 292   3          }
+ 293   2        }
+ 294   1      }
+ 295          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   4011    ----
+   CONSTANT SIZE    =    293    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+C51 COMPILER V9.01   _ÇÄ_´_»§                                                              04/06/2026 14:55:46 PAGE 6   
+
+   DATA SIZE        =     49       5
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      8       3
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
